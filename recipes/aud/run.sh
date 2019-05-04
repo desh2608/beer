@@ -2,7 +2,9 @@
 
 # Exit if one command fails.
 set -e
-stage=3
+stage=0
+
+. utils/parse_options.sh
 #######################################################################
 ## SETUP
 
@@ -12,7 +14,7 @@ feadir=features
 expdir=exp
 
 # Data
-db=timit
+db=tr
 dataset=train
 
 # Features
@@ -39,9 +41,6 @@ fi
 if [ $stage -le 1 ]; then
   echo "--> Preparing pseudo-phones \"language\" information"
   mkdir -p data/$db/lang_aud
-fi
-
-if [ $stage -le 2 ]; then
   # The option "non-speech-unit" will force the decoder to start and end
   # each utterance by a specific acoustic unit named "sil". The
   # unit can also be freely decoded within the utterance. If your data
@@ -51,14 +50,14 @@ if [ $stage -le 2 ]; then
       --non-speech-unit \
       $nunits > data/$db/lang_aud/units
 fi
-
-if [ $stage -le 3 ]; then
+exit 1
+if [ $stage -le 2 ]; then
   echo "--> Extracting features for the $db database"
   steps/extract_features.sh conf/${feaname}.yml $datadir/$db/$dataset \
          $feadir/$db/$dataset
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 3 ]; then
   # Create a "dataset". This "dataset" is just an object
   # associating the features with their utterance id and some
   # other meta-data (e.g. global mean, variance, ...).
@@ -68,7 +67,7 @@ if [ $stage -le 4 ]; then
       $expdir/$db/datasets/$feaname/${dataset}.pkl
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   # AUD system training. You need to have a Sun Grid Engine like cluster
   # (i.e. qsub command) to run it. If you have a different
   # enviroment please see utils/parallel/sge/* to see how to adapt

@@ -2,8 +2,8 @@
 
 . path.sh
 
+logdomain=''
 acoustic_scale=1.
-per_frame=""
 parallel_env=sge
 parallel_opts=""
 parallel_njobs=4
@@ -16,8 +16,8 @@ while [[ $# -gt $nargs ]]; do
       shift
       shift
       ;;
-      --per-frame)
-      per_frame="--per-frame"
+      --log-domain)
+      logdomain='--log'
       shift
       ;;
       --parallel-env)
@@ -44,11 +44,11 @@ done
 if [ $# -ne $nargs ]; then
     echo "usage: $0 [OPTS] <model> <datadir> <dataset> <out-dir>"
     echo ""
-    echo "Phone decoder"
+    echo "Compute the phone posteriors."
     echo ""
     echo "Options:"
     echo "  --acoustic-scale    acoustic model scaling factor (default: 1)"
-    echo "  --per-frame         output per frame label (default: false)"
+    echo "  --log-domain        store the posteriors in the log domain (default: false)"
     echo "  --parallel-env      parallel environment to use (default:sge)"
     echo "  --parallel-opts     options to pass to the parallel environment"
     echo "  --parallel-njobs    number of parallel jobs to use"
@@ -62,22 +62,22 @@ dataset=$3
 outdir=$4
 mkdir -p $outdir
 
-if [ ! -f $outdir/trans ]; then
-    echo "decoding $dataset dataset..."
-
-    cmd="beer hmm decode $per_frame -s $acoustic_scale --utts - \
-         $model $dataset >$outdir/trans_JOBID"
+if [ ! -f $outdir/posts.npz ]; then
+    tmpdir=$(mktemp -d $outdir/tmp.XXX);
+    trap 'rm -rf "$tmpdir"' EXIT
+    cmd="beer hmm posteriors $logdomain -s $acoustic_scale --utts - \
+         $model $dataset $tmpdir"
     utils/parallel/submit_parallel.sh \
         "$parallel_env" \
-        "hmm-decode" \
+        "hmm-posteriors" \
         "$parallel_opts" \
         "$parallel_njobs" \
         "$datadir/uttids" \
         "$cmd" \
-        $outdir || exit 1
-
-    cat $outdir/trans_* | sort > $outdir/trans || exit 1
+        $outdir/compute_posts || exit 1
+    find $tmpdir -name '*npy' | \
+        zip -@ -j --quiet $outdir/posts.npz || exit 1
 else
-    echo "Data already decoded. Skipping."
+    echo "posteriors already computed"
 fi
 

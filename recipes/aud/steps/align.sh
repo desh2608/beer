@@ -3,21 +3,16 @@
 . path.sh
 
 acoustic_scale=1.
-per_frame=""
 parallel_env=sge
 parallel_opts=""
 parallel_njobs=4
-nargs=4
+nargs=5
 
 while [[ $# -gt $nargs ]]; do
     case $1 in
       --acoustic-scale)
       acoustic_scale=$2
       shift
-      shift
-      ;;
-      --per-frame)
-      per_frame="--per-frame"
       shift
       ;;
       --parallel-env)
@@ -42,13 +37,12 @@ while [[ $# -gt $nargs ]]; do
 done
 
 if [ $# -ne $nargs ]; then
-    echo "usage: $0 [OPTS] <model> <datadir> <dataset> <out-dir>"
+    echo "usage: $0 [OPTS] <model> <alis> <datadir> <dataset> <out-dir>"
     echo ""
     echo "Phone decoder"
     echo ""
     echo "Options:"
     echo "  --acoustic-scale    acoustic model scaling factor (default: 1)"
-    echo "  --per-frame         output per frame label (default: false)"
     echo "  --parallel-env      parallel environment to use (default:sge)"
     echo "  --parallel-opts     options to pass to the parallel environment"
     echo "  --parallel-njobs    number of parallel jobs to use"
@@ -57,15 +51,16 @@ if [ $# -ne $nargs ]; then
 fi
 
 model=$1
-datadir=$2
-dataset=$3
-outdir=$4
+alis=$2
+datadir=$3
+dataset=$4
+outdir=$5
 mkdir -p $outdir
 
 if [ ! -f $outdir/trans ]; then
     echo "decoding $dataset dataset..."
 
-    cmd="beer hmm decode $per_frame -s $acoustic_scale --utts - \
+    cmd="beer hmm decode --per-frame -a $alis -s $acoustic_scale --utts - \
          $model $dataset >$outdir/trans_JOBID"
     utils/parallel/submit_parallel.sh \
         "$parallel_env" \
@@ -78,6 +73,6 @@ if [ ! -f $outdir/trans ]; then
 
     cat $outdir/trans_* | sort > $outdir/trans || exit 1
 else
-    echo "Data already decoded. Skipping."
+    echo "data already aligned"
 fi
 
