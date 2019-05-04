@@ -11,10 +11,10 @@
 set -e
 
 # JHU
-#rootdir=/export/corpora5/LDC/LDC93S1/timit/TIMIT
+rootdir=/export/corpora5/LDC/LDC93S1/timit/TIMIT
 
 # BUT
-rootdir=/mnt/matylda2/data/TIMIT/timit
+#rootdir=/mnt/matylda2/data/TIMIT/timit
 
 
 if [ $# -ne 1 ]; then
