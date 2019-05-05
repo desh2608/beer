@@ -3,6 +3,7 @@
 # Exit if one command fails.
 set -e
 stage=0
+db=timit
 
 . utils/parse_options.sh
 #######################################################################
@@ -14,8 +15,7 @@ feadir=features
 expdir=exp
 
 # Data
-db=tr
-dataset=train
+train_set=train
 
 # Features
 feaname=mfcc
@@ -50,21 +50,25 @@ if [ $stage -le 1 ]; then
       --non-speech-unit \
       $nunits > data/$db/lang_aud/units
 fi
-exit 1
+
 if [ $stage -le 2 ]; then
-  echo "--> Extracting features for the $db database"
-  steps/extract_features.sh conf/${feaname}.yml $datadir/$db/$dataset \
-         $feadir/$db/$dataset
+  for dataset in train dev test; do
+    echo "--> Extracting features for the $db database"
+    steps/extract_features.sh conf/${feaname}.yml $datadir/$db/$dataset \
+           $feadir/$db/$dataset
+  done
 fi
 
 if [ $stage -le 3 ]; then
   # Create a "dataset". This "dataset" is just an object
   # associating the features with their utterance id and some
   # other meta-data (e.g. global mean, variance, ...).
-  echo "--> Creating dataset(s) for $db database"
-  steps/create_dataset.sh $datadir/$db/$dataset \
-      $feadir/$db/$dataset/${feaname}.npz \
-      $expdir/$db/datasets/$feaname/${dataset}.pkl
+  for dataset in train dev test; do
+    echo "--> Creating $dataset dataset(s) for $db database"
+    steps/create_dataset.sh $datadir/$db/$dataset \
+        $feadir/$db/$dataset/${feaname}.npz \
+        $expdir/$db/datasets/$feaname/${dataset}.pkl
+  done
 fi
 
 if [ $stage -le 4 ]; then
@@ -77,7 +81,7 @@ if [ $stage -le 4 ]; then
       --parallel-njobs 30 \
       conf/hmm.yml \
       data/$db/lang_aud \
-      data/$db/$dataset/uttids \
-      $expdir/$db/datasets/$feaname/${dataset}.pkl \
+      data/$db/$train_set/uttids \
+      $expdir/$db/datasets/$feaname/${train_set}.pkl \
       $epochs $expdir/$db/aud
 fi

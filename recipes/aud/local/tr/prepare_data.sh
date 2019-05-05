@@ -20,15 +20,14 @@ if [ -d $rootdir/tr ]; then
   echo "$0: Corpus already extracted. Moving to data preparation."
 else
   echo "$0: Extracting Turkish dataset.."
-  mkdir -p $rootdir/tr/
-  tar -xzf $rootdir/tr.tar.gz -C $rootdir/tr/
+  tar -xzf $rootdir/tr.tar.gz 
 fi
 
 corpdir=$rootdir/tr/
 conf=$(dirname $0)
 outdir=$1
 dir=$(pwd)/$outdir/local
-mkdir -p $outdir/local
+mkdir -p $outdir/local/clips
 
 [ -f $outdir/.done ] && echo "Data already prepared. Skipping." && exit 0;
 
@@ -41,10 +40,14 @@ for dataset in train dev test; do
   do
     uttid="${line[0]}"
     fileid="${line[1]}"
+
+    # Note that we need to save a copy in WAV format since sox cannot change header in a pipe
+    ffmpeg -nostats -loglevel 0 -i $corpdir/clips/${fileid}.mp3 -f sox - | sox -p -t wav -r 16000 $outdir/local/clips/${fileid}.wav
+
     trans=$(echo "${line[2]}" | local/tr/get_ipa_phones.py)
-    echo "$uttid" > $outdir/$dataset/uttids
-    echo "$uttid sox $corpdir/clips/$fileid.mp3 -t wav -r 8000 -c 1 -b 16 |" > $outdir/$dataset/wavs.scp
-    echo "$uttid $trans" > $outdir/$dataset/trans
+    echo "$uttid" >> $outdir/$dataset/uttids
+    echo "$uttid $outdir/local/clips/${fileid}.wav" >> $outdir/$dataset/wavs.scp
+    echo "$uttid $trans" >> $outdir/$dataset/trans
     counter=$((counter+1))
     printf "\r%2f%s" "$(bc -l <<< "$counter*100/$total")" "% done."
   done
