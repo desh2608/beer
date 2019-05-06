@@ -38,15 +38,15 @@ for dataset in train dev test; do
   counter=0
   sed 1d $corpdir/$dataset.tsv | while IFS=$'\t' read -r -a line
   do
-    uttid="${line[0]}"
-    fileid="${line[1]}"
+    spkid="${line[0]}"
+    uttid="${line[1]}"
 
     # Note that we need to save a copy in WAV format since sox cannot change header in a pipe
-    ffmpeg -nostats -loglevel 0 -i $corpdir/clips/${fileid}.mp3 -f sox - | sox -p -t wav -r 16000 $outdir/local/clips/${fileid}.wav
+    ffmpeg -nostats -loglevel 0 -i $corpdir/clips/${uttid}.mp3 -f sox - | sox -p -t wav -r 16000 $outdir/local/clips/${uttid}.wav
 
     trans=$(echo "${line[2]}" | local/tr/get_ipa_phones.py)
     echo "$uttid" >> $outdir/$dataset/uttids
-    echo "$uttid $outdir/local/clips/${fileid}.wav" >> $outdir/$dataset/wavs.scp
+    echo "$uttid $outdir/local/clips/${uttid}.wav" >> $outdir/$dataset/wavs.scp
     echo "$uttid $trans" >> $outdir/$dataset/trans
     counter=$((counter+1))
     printf "\r%2f%s" "$(bc -l <<< "$counter*100/$total")" "% done."

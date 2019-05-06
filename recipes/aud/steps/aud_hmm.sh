@@ -100,7 +100,6 @@ if [ ! -f $outdir/final.mdl ]; then
             "$uttids" \
             "$cmd" \
             $outdir/epoch${epoch}|| exit 1
-
         # Update the model' parameters.
         find $outdir/epoch${epoch} -name '*pkl' | \
             beer hmm update -o $outdir/optim_state.pth $outdir/$mdl \

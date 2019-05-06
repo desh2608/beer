@@ -3,7 +3,7 @@
 # Exit if one command fails.
 set -e
 stage=0
-db=timit
+db=tr
 
 . utils/parse_options.sh
 #######################################################################
@@ -72,16 +72,36 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  # AUD system training. You need to have a Sun Grid Engine like cluster
-  # (i.e. qsub command) to run it. If you have a different
-  # enviroment please see utils/parallel/sge/* to see how to adapt
-  # this recipe to you system.
-  steps/aud.sh \
+  # Train a GMM-HMM model for AUD
+  steps/aud_hmm.sh \
       --parallel-opts "-l mem_free=1G,ram_free=1G" \
       --parallel-njobs 30 \
-      conf/hmm.yml \
+      conf/hmm-$db.yml \
       data/$db/lang_aud \
       data/$db/$train_set/uttids \
       $expdir/$db/datasets/$feaname/${train_set}.pkl \
       $epochs $expdir/$db/aud
 fi
+
+if [ $stage -le 5 ]; then
+  # Decode and score the GMM-HMM model (score using boundary method)
+	for dataset in dev test; do
+    steps/decode.sh \
+			--parallel-opts "-l mem_free=1G,ram_free=1G" \
+			--parallel-njobs 4 \
+			$expdir/$db/aud/final.mdl \
+			data/$db/$dataset\
+			$expdir/$db/datasets/$feaname/$dataset.pkl \
+			$expdir/$db/aud/decode/$dataset 
+  done
+
+  for dataset in dev test; do
+    echo "Scoring $dataset using boundary method"
+    python utils/score_boundaries.py -d 0 data/$db/$dataset/trans \
+      $expdir/$db/aud/decode/$dataset/trans
+  done
+fi
+
+#if [ $stage -le 5 ]; then
+  # Train an HMM-VAE model for AUD
+#fi
