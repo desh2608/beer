@@ -17,6 +17,7 @@ setup(
         'beer',
         'beer.dists',
         'beer.models',
+        'beer.priors',
         'beer.nnet',
         'beer.inference',
         'beer.cli',

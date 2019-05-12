@@ -1,21 +1,20 @@
 #!/bin/bash
 
-if [ $# -ne 4 ];then
-    echo "$0 <setup.sh> <model-dir> <data-dir> <decode-dir> "
+if [ $# -ne 5 ];then
+    echo "$0 <setup.sh> <model-dir> <data-dir> <fea-dir> <decode-dir> "
     exit 1
 fi
 
 setup=$1
 mdldir=$2
 data_dir=$3
-decode_dir=$4
+fea_dir=$4
+decode_dir=$5
 
 . $setup
-mdl=$mdldir/final.mdl
+mdl=$mdldir/10.mdl
 pdf_mapping=$mdldir/pdf_mapping.txt
 
-[[ -f $mdl ]] || { echo "File not found: $mdl" >2; exit 1; }
-[[ -f $pdf_mapping ]] || { echo "File not found: $pdf_mapping" >2; exit 1; }
 mkdir -p $decode_dir
 
 # Load a numpy npz file and print its content as:
@@ -37,12 +36,12 @@ if [ ! -f $decode_dir/hyp ];then
     trap 'rm -rf "$tmpdir"' EXIT
 
     cmd="python utils/hmm-decode-parallel.py $mdl \
-        $data_dir/feats.npz $tmpdir"
+        $fea_dir/mfcc.npz $tmpdir"
     utils/parallel/submit_parallel.sh \
         "$parallel_env" \
         "hmm-decode" \
-        "$hmm_decode_parallel_opts" \
-        $hmm_decode_njobs \
+        "$aud_hmm_decode_parallel_opts" \
+        $aud_hmm_decode_njobs \
         $data_dir/uttids \
         "$cmd" \
         $decode_dir || exit 1
@@ -53,7 +52,7 @@ if [ ! -f $decode_dir/hyp ];then
     python -c "$print_pdf_id" | \
         python utils/pdf2unit.py --phone-level $pdf_mapping  \
         > $decode_dir/hyp
-    ln -s $data_dir/trans $decode_dir/trans
+
 else
     echo "Decoding already done. Skipping."
 fi

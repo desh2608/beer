@@ -3,8 +3,8 @@
 # Acoustic Unit Discvoery.
 
 
-if [ $# -ne 5 ];then
-    echo "$0: <setup.sh> <lang-dir> <init-ali> <data-train-dir> <mdl-dir>"
+if [ $# -ne 6 ];then
+    echo "$0: <setup.sh> <lang-dir> <init-ali> <data-train-dir> <fea-dir> <mdl-dir>"
     exit 1
 fi
 
@@ -12,13 +12,14 @@ setup=$1
 lang_dir=$2
 init_ali=$3
 data_train_dir=$4
-mdl_dir=$5
+fea_dir=$5
+mdl_dir=$6
 mkdir -p $mdl_dir
 
 . $setup
 
-fea=$data_train_dir/${aud_vae_hmm_fea_type}.npz
-feastats=$data_train_dir/${aud_vae_hmm_fea_type}.stats.npz
+fea=$fea_dir/${aud_vae_hmm_fea_type}.npz
+feastats=$fea_dir/${aud_vae_hmm_fea_type}.stats.npz
 
 
 if [ ! -f $mdl_dir/0.mdl ]; then
@@ -30,14 +31,14 @@ if [ ! -f $mdl_dir/0.mdl ]; then
     # Creete the unigral LM of the acoustic units.
     python utils/lm-unigram-create.py \
         --concentration $aud_vae_hmm_lm_concentration \
-        $(cat $lang_dir/phones.txt | wc -l) \
+        $(cat $lang_dir/units | wc -l) \
         $mdl_dir/lm.mdl || exit 1
 
     # Create the definition of the decoding graph.
     python utils/create-decode-graph.py \
        --unigram-lm $mdl_dir/lm.mdl \
        --use-silence \
-       $lang_dir/phones.txt > $mdl_dir/decode_graph.txt || exit 1
+       $lang_dir/units > $mdl_dir/decode_graph.txt || exit 1
 
     # Build the decoding graph.
     python utils/prepare-decode-graph.py \
@@ -53,7 +54,7 @@ if [ ! -f $mdl_dir/0.mdl ]; then
     python utils/hmm-create-graph-and-emissions.py \
         --dim $aud_vae_hmm_latent_dim \
          $mdl_dir/hmm.yml  \
-         $lang_dir/phones.txt \
+         $lang_dir/units \
          $mdl_dir/phones_hmm.graphs \
          $mdl_dir/emissions.mdl || exit 1
 
@@ -97,7 +98,7 @@ if [ ! -f $mdl_dir/0.mdl ]; then
         $mdl_dir/nflow.mdl \
         $mdl_dir/latent_model.mdl \
         $mdl_dir/decoder.mdl \
-        $mdl_dir/0.mdl || exit_msg "Failed to create the VAE"
+        $mdl_dir/0.mdl || ( echo "Failed to create the VAE" & exit 1 )
 else
     echo "Using previous created HMM: $mdl_dir/0.mdl"
 fi
@@ -152,7 +153,7 @@ if [ ! -f $mdl_dir/final.mdl ];then
             python utils/convert-ali-to-best-path.py \
                 $mdl_dir/alis.npz \
                 $mdl_dir/pdf_mapping.txt \
-                $lang_dir/phones.txt \
+                $lang_dir/units \
                 $tmpdir || exit 1
             find $tmpdir -name '*npy' | \
                   zip -j -@ $mdl_dir/best_paths.npz > /dev/null || exit 1
@@ -167,7 +168,7 @@ if [ ! -f $mdl_dir/final.mdl ];then
             python utils/create-decode-graph.py \
                --unigram-lm $mdl_dir/lm.mdl \
                --use-silence \
-               $lang_dir/phones.txt > $mdl_dir/decode_graph.txt || exit 1
+               $lang_dir/units > $mdl_dir/decode_graph.txt || exit 1
 
             # Build the decoding graph.
             python utils/prepare-decode-graph.py \
@@ -206,17 +207,19 @@ if [ ! -f $mdl_dir/final.mdl ];then
                 $fea \
                 $feastats \
                 $mdl_dir/${iter}.mdl"
-        utils/parallel/submit_single.sh \
+        utils/parallel/submit_parallel.sh \
             "$parallel_env" \
             "vae-hmm-train-iter$iter" \
             "$aud_vae_hmm_train_parallel_opts" \
+            "$aud_hmm_train_njobs" \
+            "$data_train_dir/uttids" \
             "$cmd" \
             $mdl_dir || exit 1
 
         mdl=${iter}.mdl
     done
 
-    ln -s $mdl_dir/$mdl $mdl_dir/final.mdl
+    cp $mdl_dir/$mdl $mdl_dir/final.mdl
 else
     echo "Model already trained: $mdl_dir/final.mdl"
 fi

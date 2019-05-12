@@ -321,8 +321,8 @@ class BayesianModelOptimizer:
         'Set all the standard/Bayesian parameters gradient to zero.'
         if self._std_optim is not None:
             self._std_optim.zero_grad()
-        for parameter in self._parameters:
-            parameter.natural_grad.zero_()
+        #for parameter in self._parameters:
+        #    parameter.natural_grad.zero_()
 
     def step(self):
         'Update all the standard/Bayesian parameters.'

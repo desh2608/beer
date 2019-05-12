@@ -18,3 +18,7 @@ from .gsm import *
 from .mixtureset import *
 from .normalset import *
 
+from .lm import *
+
+## VAE
+from .vae import *

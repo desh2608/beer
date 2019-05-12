@@ -18,6 +18,7 @@ log_dir=$5
 
 
 rm -fr $log_dir/${name}.out.*
+
 qsub -N "$name"  -cwd  -j y -sync y\
     -o $log_dir/${name}.out'.$TASK_ID' \
     -t 1-$(ls $split_dir | wc -l) \

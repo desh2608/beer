@@ -2,10 +2,33 @@
 import abc
 import torch
 from .basemodel import Model
+from .bayesmodel import BayesianModel
 
+__all__ = ['BayesianModelSet', 'DynamicallyOrderedModelSet', 'JointModelSet', 
+							'ModelSet', 'RepeatedModelSet']
 
-__all__ = ['DynamicallyOrderedModelSet', 'JointModelSet', 'ModelSet',
-           'RepeatedModelSet']
+class BayesianModelSet(BayesianModel, metaclass=abc.ABCMeta):
+    '''Abstract base class for a set of the :any:`BayesianModel`.
+    This model is used by model having discrete latent variable such
+    as Mixture models  or Hidden Markov models.
+    Note:
+        subclasses of :any:`BayesianModelSet` are expected to be
+        iterable and therefore should implement at minima:
+        .. code-block:: python
+           MyBayesianModelSet:
+               def __getitem__(self, key):
+                  ...
+               def __len__(self):
+                  ...
+    '''
+
+    @abc.abstractmethod
+    def __getitem__(self, key):
+        pass
+
+    @abc.abstractmethod
+    def __len__(self):
+        pass
 
 
 class ModelSet(Model, metaclass=abc.ABCMeta):
@@ -39,8 +62,7 @@ class ModelSet(Model, metaclass=abc.ABCMeta):
         pass
 
 
-
-class JointModelSet(ModelSet):
+class JointModelSet(BayesianModelSet):
     '''Set of concatenated model sets having the same type of
     sufficient statistics.
     '''
@@ -50,7 +72,9 @@ class JointModelSet(ModelSet):
         modelsets: (seq): list of model set.
         '''
         super().__init__()
-        self.modelsets = torch.nn.ModuleList(modelsets)
+        self.modelsets = modelsets
+        for i, modelset in enumerate(self.modelsets):
+            self._register_submodel('smodel' + str(i), modelset)
 
     ####################################################################
     # BayesianModel interface.
@@ -91,7 +115,6 @@ class JointModelSet(ModelSet):
     def __getitem__(self, key):
         '''Args:
         key (int): state index.
-
         '''
         if key < 0:
             raise ValueError("Unsupported negative index")

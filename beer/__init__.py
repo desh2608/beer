@@ -6,6 +6,7 @@ for speech technologies.
 '''
 
 from .models import *
+from .priors import *
 from .inference import *
 from . import features
 from . import nnet

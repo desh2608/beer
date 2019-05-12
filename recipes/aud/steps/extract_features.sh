@@ -33,3 +33,9 @@ else
     echo "Features already extracted ($feadir/${feaname}.npz). Skipping."
 fi
 
+if [ ! -f "$feadir"/${feaname}.stats.npz ]; then
+    python utils/features-stats.py $feadir/${feaname}.npz\
+        $feadir/${feaname}.stats.npz
+else
+   echo "Features statistics already computed in: $feadir/${feaname}.stats.npz"
+fi
